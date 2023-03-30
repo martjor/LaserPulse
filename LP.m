@@ -1,7 +1,14 @@
-% File Name:            laser_pulse.m
+% File Name:            LP.m
 % Author:               Jorge Augusto Martinez-Ortiz
 % Date Created:         01/26/2023
-% Description:          Analysis of laser pulse in GEC RF Cell experiments
+% Description:          Analysis of laser pulse in GEC RF Cell experiments.
+%                       We simply use this script as a test to determine
+%                       the method we will use to do our analysis
+%
+%                       03.13.2023: After meeting with Parker we determined
+%                       that we will be coloring the cells using an
+%                       equation similar to that of the configurational
+%                       energy.
 
 %% LOAD DATA
 clear
