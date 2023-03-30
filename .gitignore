@@ -1,0 +1,4 @@
+*.DS_Store
+*.avi
+*.asv
+*.ipynb_checkpoints/*
