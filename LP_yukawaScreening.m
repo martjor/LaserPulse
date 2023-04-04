@@ -68,33 +68,57 @@ end
 % Calculate background energy for each particle
 U = U ./ count;
 
-%% DISPLAY
+%% GENERATE VIDEO
 
-figure
+% Set Video Properties
+batchSize = 50;
+video = VideoWriter(fileName);
+fileName = 'PercentDeviation.avi';
+numMovieFrames = numFrames;
+video.Quality = 100;
+open(video);
+M(batchSize) = struct('cdata',[],'colormap',[]);
+j = 0;
+
+% Generate figure container
+fig = figure('Visible','off');
 ax = axes;
+xlabel('x [Pixels]')
+ylabel('y [Pixels]')
 xlim([min(T.x) max(T.x)]);
 ylim([min(T.y) max(T.y)]);
 clim(ax,[-1 1])
 
-M(numFrames) = struct('cdata',[],'colormap',[]);
-for i = 1:numFrames
+for i = 1:numMovieFrames
+    % Generate Data
     f = pcryGetFrame(T,frame(i));
     idx = f.particle + 1;
     E = Econfig(f.x,f.y,27);
     EAvg = U(idx);
     div = (E-EAvg) ./ EAvg;
     
-    cla
-    pcryVoronoi(f.x,f.y,log(abs(div)+1))
-    title(sprintf("Frame %i",frame(i)));
+    % Generate plot
+    cla;
+    pcryVoronoi(f.x,f.y,log(abs(div)+1));
+    title(sprintf("Frame %i, b=%i= px",frame(i),b));
     drawnow
 
-    cdata = print('-RGBImage','-r120');
-    M(i) = im2frame(cdata);
-end
+    % Store Color Map
+    cdata = print('-RGBImage','-r300');
+    M(j+1) = im2frame(cdata);
+    j = mod(j+1,batchSize);
 
-%%
-writeVid('PercentDeviation.avi',M)
+    fprintf('Generating Frame %i/%i\n',i,numMovieFrames);
+
+    if (j==0) && (i~=1)
+        fprintf("\tWriting...\n")
+        writeVideo(video,M);
+        fprintf("\tDone.\n")
+    end
+end
+close(video);
+
+
 
 
 
