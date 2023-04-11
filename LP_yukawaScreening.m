@@ -26,11 +26,9 @@ frame = unique(T.frame);
 
 numParticles = numel(particle);
 numFrames = numel(frame);
-
-% Fill gaps for particles that disappear
-TNan = pcryFillNaN(T);
-
 %% GENERATE PAIR CORRELATION FUNCTION
+% NOTE: This step is not necessary if you already now your value fo b (mean
+% interparticle distance).
 dr = 3;
 g = {};
 r = {};
@@ -40,14 +38,12 @@ for i = 1:numFrames
     fprintf("Frame %i\n",frame(i));
 end
 
-%% APPROXIMATE INTERPARTICLE DISTANCE
 [gAvg,rTotal] = corrfun(g,r);
 figure
 plot(rTotal,gAvg)
 
-b = 27;
-
 %% CALCULATE BACKGROUND CONFIGURATIONAL ENERGY
+b = 27;
 U = zeros(numParticles,1);
 count = zeros(numParticles,1);
 
@@ -59,7 +55,7 @@ for i = 1:numFrames
     idx = f.particle + 1;
 
     % Add Energies to the corresponding particles and count
-    U(idx) = U(idx) + Econfig(f.x,f.y,b);
+    U(idx) = U(idx) + energyConfig(f.x,f.y,b);
     count(idx) = count(idx) + 1;
 
     fprintf("Frame (%i/%i)\n",i,numFrames);
@@ -69,72 +65,86 @@ end
 U = U ./ count;
 
 %% GENERATE VIDEO
-
-% Set Video Properties
-batchSize = 50;
-video = VideoWriter(fileName);
+% Filename where the video will be recorded
 fileName = 'PercentDeviation.avi';
-numMovieFrames = numFrames;
-video.Quality = 100;
-open(video);
-M(batchSize) = struct('cdata',[],'colormap',[]);
-j = 0;
 
-% Generate figure container
-fig = figure('Visible','off');
+% Frames that will be animated/recorded
+frameVec = 1:600;
+
+% Create animation figure
+animFunc = @(frame) plotEnergyDev(T,U,b,frame);
+
+% Instantiate Animator object
+Anim = pcryAnimator(animFunc);
+
+% Generate figure container and specify axes properties
+figure
 ax = axes;
 xlabel('x [Pixels]')
 ylabel('y [Pixels]')
 xlim([min(T.x) max(T.x)]);
 ylim([min(T.y) max(T.y)]);
+colorbar
+colormap spring
 clim(ax,[-1 1])
 
-for i = 1:numMovieFrames
-    % Generate Data
-    f = pcryGetFrame(T,frame(i));
-    idx = f.particle + 1;
-    E = Econfig(f.x,f.y,27);
+% Animate first to verify that you like the video
+Anim.animate(frameVec);
+
+% Record video
+% Anim.recordVideo(frameVec,fileName);
+
+%% FUNCTION DEFINITIONS (NO NEED TO EXECUTE)
+
+% Function that will generate a plot
+% This function will be pased as the argument to instantiate the animator
+% object. 
+% The function should take specify the input variables and the way they
+% will be accessed whenever the frame number is provided
+function plotEnergyDev(T,U,b,frame)
+    % Get current frame
+    F = pcryGetFrame(T,frame);
+    x = F.x;
+    y = F.y;
+
+    % Get indices of particles in frame
+    % The +1 is very important here, since matlab indices go start at 1
+    % particle indices start at 0. This step is necessary to match the
+    % right energies to the right particle. It probably is a good idea to
+    % pre-process the data to change the indices of the particles to start
+    % at 1 altogether
+    idx = F.particle + 1;
+
+    % Calculate the configurational energy of the particles
+    E = energyConfig(x,y,b);
+
+    % Gather the mean configurational energy of the particles
     EAvg = U(idx);
-    div = (E-EAvg) ./ EAvg;
-    
-    % Generate plot
-    cla;
-    pcryVoronoi(f.x,f.y,log(abs(div)+1));
-    title(sprintf("Frame %i, b=%i= px",frame(i),b));
-    drawnow
 
-    % Store Color Map
-    cdata = print('-RGBImage','-r300');
-    M(j+1) = im2frame(cdata);
-    j = mod(j+1,batchSize);
+    % Calculate the percent diff
+    diff = (E-EAvg) ./ EAvg;
 
-    fprintf('Generating Frame %i/%i\n',i,numMovieFrames);
-
-    if (j==0) && (i~=1)
-        fprintf("\tWriting...\n")
-        writeVideo(video,M);
-        fprintf("\tDone.\n")
-    end
+    % Generate voronoi plot
+    pcryVoronoi(x,y,diff);
+    title(sprintf("Frame %i",frame));
 end
-close(video);
 
-
-
-
-
-function E = Econfig(x,y,b)
+function E = energyConfig(x,y,b)
     % Calculate distances between particles
     r = pcryNorm2d([x y],[x y]);
     ru = triu(r);
     rl = tril(r);
 
+    % Distances between particles not including the main diagonal which is
+    % only zeros
     r = rl(:,1:(end-1)) + ru(:,2:end);
 
-    % Subtract 1 to compensate for self-interaction
+    % Calculate proportionality factor of configurational energy
     E = sum(exp(-r/b)./r,2);
 end
 
-
+% Averages the pair correlation function across multiple frames
+% This ended up being not very useful
 function [gAvg,rTotal] = corrfun(g,r)
     rTotal = [];
 
@@ -165,12 +175,3 @@ function [gAvg,rTotal] = corrfun(g,r)
         fprintf("Processing (%.1f)\n",i/numel(rTotal)*100);
     end
 end
-
-function writeVid(name,M)
-    v = VideoWriter(name);
-    v.Quality = 100;
-    open(v);
-    writeVideo(v,M);
-    close(v);
-end
-
