@@ -18,9 +18,9 @@
 %                           from that of a specific frame 
 
 % Load data
-%fileName = 'Results1.csv';
-fileName = '/Users/jorgeaugustomartinezortiz/Library/CloudStorage/OneDrive-BaylorUniversity/CASPER/projects/plasma_crystal/crystal_analysis/torsions_datasets/laser_pulse_20221006_crop_0_999.csv';
-T = pcryReadTable(fileName);
+fileName = 'Results1.csv';
+%fileName = '/Users/jorgeaugustomartinezortiz/Library/CloudStorage/OneDrive-BaylorUniversity/CASPER/projects/plasma_crystal/crystal_analysis/torsions_datasets/laser_pulse_20221006_crop_0_999.csv';
+T = pcryReadTable(fileName,'fiji');
 
 particle = unique(T.particle);
 frame = unique(T.frame);
@@ -53,7 +53,7 @@ for i = 1:numFrames
     f = pcryGetFrame(T,frame(i));
 
     % Get index to particles
-    idx = f.particle + 1;
+    idx = f.particle;
 
     % Add Energies to the corresponding particles and count
     U(idx) = U(idx) + energyConfig(f.x,f.y,b);
@@ -70,7 +70,7 @@ U = U ./ count;
 fileName = 'PercentDeviation.avi';
 
 % Frames that will be animated/recorded
-frameVec = 1:999;
+frameVec = 1:(numFrames-1);
 
 % Create animation figure
 animFunc = @(frame) plotEnergyDev(T,U,b,frame);
@@ -91,10 +91,10 @@ colormap spring
 clim(ax,[-1 1])
 
 % Animate first to verify that you like the video
-%Anim.animate(frameVec);
+Anim.animate(frameVec);
 
 % Record video
-Anim.recordVideo(frameVec,fileName);
+%Anim.recordVideo(frameVec,fileName);
 
 %% FUNCTION DEFINITIONS (NO NEED TO EXECUTE)
 
@@ -115,7 +115,7 @@ function plotEnergyDev(T,U,b,frame)
     % right energies to the right particle. It probably is a good idea to
     % pre-process the data to change the indices of the particles to start
     % at 1 altogether
-    idx = F.particle + 1;
+    idx = F.particle;
 
     % Calculate the configurational energy of the particles
     E = energyConfig(x,y,b);
