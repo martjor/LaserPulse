@@ -18,6 +18,7 @@
 %                           from that of a specific frame 
 
 % Load data
+%fileName = 'Results1.csv';
 fileName = '/Users/jorgeaugustomartinezortiz/Library/CloudStorage/OneDrive-BaylorUniversity/CASPER/projects/plasma_crystal/crystal_analysis/torsions_datasets/laser_pulse_20221006_crop_0_999.csv';
 T = pcryReadTable(fileName);
 
@@ -69,7 +70,7 @@ U = U ./ count;
 fileName = 'PercentDeviation.avi';
 
 % Frames that will be animated/recorded
-frameVec = 1:600;
+frameVec = 1:999;
 
 % Create animation figure
 animFunc = @(frame) plotEnergyDev(T,U,b,frame);
@@ -82,6 +83,7 @@ figure
 ax = axes;
 xlabel('x [Pixels]')
 ylabel('y [Pixels]')
+axis equal
 xlim([min(T.x) max(T.x)]);
 ylim([min(T.y) max(T.y)]);
 colorbar
@@ -89,10 +91,10 @@ colormap spring
 clim(ax,[-1 1])
 
 % Animate first to verify that you like the video
-Anim.animate(frameVec);
+%Anim.animate(frameVec);
 
 % Record video
-% Anim.recordVideo(frameVec,fileName);
+Anim.recordVideo(frameVec,fileName);
 
 %% FUNCTION DEFINITIONS (NO NEED TO EXECUTE)
 
@@ -145,33 +147,40 @@ end
 
 % Averages the pair correlation function across multiple frames
 % This ended up being not very useful
-function [gAvg,rTotal] = corrfun(g,r)
-    rTotal = [];
+function [gAvg,rBins] = corrfun(g,r)
+    numFrames = numel(g);
+    rBins = [];
 
     % Find the unique values for r
-    for i = 1:numel(r)
-        rTotal = union(rTotal,r{i});
+    for i = 1:numFrames
+        rBins = union(rBins,r{i});
     end
+    numBins = numel(rBins);
 
     % Find the average value of g(r) at every r
-    gAvg = zeros(numel(rTotal),1);
-    for i = 1:numel(rTotal)
-        rCurr = rTotal(i);
-        gCurr = g{i};
+    gAvg = zeros(numBins,1);
+    for i = 1:numBins
+        % Current r value
+        rCurr = rBins(i);
         
+        % Reset counter and current value of g
         count = 0;
         gTemp = 0;
         
-        for j = 1:numel(r)
+        % Iterate through the pair-correlation-fcn of every frame
+        for j = 1:numFrames
+            % Create an index to the bin corresponding to the current val
             idx = rCurr == r{j};
 
+            % If the bin value is in this frame, process
             if any(idx)
-                gTemp = gTemp + gCurr(i);
+                gCurr = g{j};
+                gTemp = gTemp + gCurr(idx);
                 count = count + 1;
             end
         end
 
         gAvg(i) = gTemp / count;
-        fprintf("Processing (%.1f)\n",i/numel(rTotal)*100);
+        fprintf("Processing (%.1f)\n",i/numel(rBins)*100);
     end
 end
